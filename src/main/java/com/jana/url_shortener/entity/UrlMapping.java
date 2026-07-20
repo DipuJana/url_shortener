@@ -7,7 +7,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "url_mappings", indexes = {
         @Index(name = "idx_short_code", columnList = "shortCode", unique = true),
-        @Index(name = "idx_custom_alias", columnList = "customAlias", unique = true),
         @Index(name = "idx_expires_at", columnList = "expiresAt")
 })
 @Getter
@@ -23,9 +22,6 @@ public class UrlMapping {
 
     @Column(name = "short_code", nullable = false, unique = true)
     private String shortCode;
-
-    @Column(name = "custom_alias", unique = true)
-    private String customAlias;
 
     @Column(name = "original_url", nullable = false, columnDefinition = "TEXT")
     private String originalUrl;

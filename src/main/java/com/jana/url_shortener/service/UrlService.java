@@ -24,17 +24,15 @@ public class UrlService {
     public UrlResponse createShortUrl(ShortenUrlRequest request) {
         log.info("Processing request to shorten URL: {}", request.longUrl());
 
-        // Baseline logic: Generate a temporary unique code for Day 2 CRUD.
-        // We will replace this with the pure Base62 arithmetic engine tomorrow on Day 3.
         String generatedCode = UUID.randomUUID().toString().substring(0, 8);
 
+        // Choose the final short code string based on user input
         String finalShortCode = (request.customAlias() != null && !request.customAlias().isBlank())
                 ? request.customAlias()
                 : generatedCode;
 
-        // Check for alias/code collisions
-        if (urlMappingRepository.existsByShortCode(finalShortCode) ||
-                urlMappingRepository.existsByCustomAlias(finalShortCode)) {
+        // A single clean database unique check constraint
+        if (urlMappingRepository.existsByShortCode(finalShortCode)) {
             throw new IllegalArgumentException("Short code or alias already exists: " + finalShortCode);
         }
 
@@ -43,9 +41,9 @@ public class UrlService {
             expiresAt = LocalDateTime.now().plusDays(request.ttlInDays());
         }
 
+        // Normalized builder pattern containing zero duplicate alias fields
         UrlMapping urlMapping = UrlMapping.builder()
                 .shortCode(finalShortCode)
-                .customAlias(request.customAlias() != null && !request.customAlias().isBlank() ? request.customAlias() : null)
                 .originalUrl(request.longUrl())
                 .expiresAt(expiresAt)
                 .build();
