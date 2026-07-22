@@ -11,7 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -20,6 +22,9 @@ import java.util.Set;
 public class UrlService {
 
     private final UrlMappingRepository urlMappingRepository;
+    private final RedisCacheService redisCacheService;
+
+    private static final Duration DEFAULT_CACHE_TTL = Duration.ofHours(24);
 
     // Block system routes from ever being claimed as custom aliases
     private static final Set<String> RESERVED_KEYWORDS = Set.of(
@@ -47,7 +52,7 @@ public class UrlService {
             expiresAt = LocalDateTime.now().plusDays(request.ttlInDays());
         }
 
-        // Set shortCode to user's custom alias if present, otherwise NULL. Zero dummy strings.
+        // Set shortCode to user's custom alias if present, otherwise NULL.
         UrlMapping urlMapping = UrlMapping.builder()
                 .shortCode(hasCustomAlias ? request.customAlias().trim() : null)
                 .originalUrl(request.longUrl())
@@ -81,6 +86,14 @@ public class UrlService {
     public String getOriginalUrlAndValidate(String shortCode) {
         log.info("Resolving redirect for short code: {}", shortCode);
 
+        // 1. CHECK REDIS CACHE FIRST
+        Optional<String> cachedUrl = redisCacheService.getOriginalUrl(shortCode);
+        if (cachedUrl.isPresent()) {
+            urlMappingRepository.incrementClickCount(shortCode);
+            return cachedUrl.get();
+        }
+
+        // 2. CACHE MISS -> FALLBACK TO MYSQL
         UrlMapping mapping = urlMappingRepository.findByShortCode(shortCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Short URL not found for code: " + shortCode));
 
@@ -89,7 +102,9 @@ public class UrlService {
             throw new IllegalArgumentException("Short URL has expired");
         }
 
-        // Increment click count directly in the database
+        // 3. STORE IN REDIS FOR FUTURE READS
+        redisCacheService.cacheUrl(shortCode, mapping.getOriginalUrl(), DEFAULT_CACHE_TTL);
+
         urlMappingRepository.incrementClickCount(shortCode);
 
         return mapping.getOriginalUrl();
