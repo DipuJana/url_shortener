@@ -3,15 +3,16 @@ package com.jana.url_shortener.service;
 import com.jana.url_shortener.dto.ShortenUrlRequest;
 import com.jana.url_shortener.dto.UrlResponse;
 import com.jana.url_shortener.entity.UrlMapping;
-import com.jana.url_shortener.repository.UrlMappingRepository;
 import com.jana.url_shortener.exception.ResourceNotFoundException;
+import com.jana.url_shortener.repository.UrlMappingRepository;
+import com.jana.url_shortener.util.Base62Util;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -20,20 +21,25 @@ public class UrlService {
 
     private final UrlMappingRepository urlMappingRepository;
 
+    // Block system routes from ever being claimed as custom aliases
+    private static final Set<String> RESERVED_KEYWORDS = Set.of(
+            "api", "admin", "login", "health", "metrics", "swagger-ui", "actuator", "v1"
+    );
+
     @Transactional
     public UrlResponse createShortUrl(ShortenUrlRequest request) {
         log.info("Processing request to shorten URL: {}", request.longUrl());
 
-        String generatedCode = UUID.randomUUID().toString().substring(0, 8);
+        boolean hasCustomAlias = request.customAlias() != null && !request.customAlias().isBlank();
 
-        // Choose the final short code string based on user input
-        String finalShortCode = (request.customAlias() != null && !request.customAlias().isBlank())
-                ? request.customAlias()
-                : generatedCode;
-
-        // A single clean database unique check constraint
-        if (urlMappingRepository.existsByShortCode(finalShortCode)) {
-            throw new IllegalArgumentException("Short code or alias already exists: " + finalShortCode);
+        if (hasCustomAlias) {
+            String alias = request.customAlias().trim();
+            if (RESERVED_KEYWORDS.contains(alias.toLowerCase())) {
+                throw new IllegalArgumentException("The alias '" + alias + "' is a system-reserved keyword.");
+            }
+            if (urlMappingRepository.existsByShortCode(alias)) {
+                throw new IllegalArgumentException("Custom alias already exists: " + alias);
+            }
         }
 
         LocalDateTime expiresAt = null;
@@ -41,23 +47,52 @@ public class UrlService {
             expiresAt = LocalDateTime.now().plusDays(request.ttlInDays());
         }
 
-        // Normalized builder pattern containing zero duplicate alias fields
+        // Set shortCode to user's custom alias if present, otherwise NULL. Zero dummy strings.
         UrlMapping urlMapping = UrlMapping.builder()
-                .shortCode(finalShortCode)
+                .shortCode(hasCustomAlias ? request.customAlias().trim() : null)
                 .originalUrl(request.longUrl())
                 .expiresAt(expiresAt)
                 .build();
 
+        // Phase 1: Persist entity to generate database primary key
         UrlMapping savedMapping = urlMappingRepository.save(urlMapping);
-        log.info("Successfully persisted short code [{}] for URL", savedMapping.getShortCode());
+
+        // Phase 2: Convert auto-increment ID to Base62 if no custom alias was supplied
+        if (!hasCustomAlias) {
+            String base62Code = Base62Util.encode(savedMapping.getId());
+            savedMapping.setShortCode(base62Code);
+            // JPA dirty checking updates short_code before transaction commit
+        }
+
+        log.info("Successfully persisted short code [{}] for URL ID [{}]",
+                savedMapping.getShortCode(), savedMapping.getId());
 
         String generatedShortUrl = "http://localhost:8080/" + savedMapping.getShortCode();
 
         return new UrlResponse(
                 savedMapping.getShortCode(),
                 generatedShortUrl,
+                savedMapping.getClickCount(),
                 savedMapping.getExpiresAt()
         );
+    }
+
+    @Transactional
+    public String getOriginalUrlAndValidate(String shortCode) {
+        log.info("Resolving redirect for short code: {}", shortCode);
+
+        UrlMapping mapping = urlMappingRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Short URL not found for code: " + shortCode));
+
+        if (mapping.getExpiresAt() != null && mapping.getExpiresAt().isBefore(LocalDateTime.now())) {
+            log.warn("Attempted access to expired short code: {}", shortCode);
+            throw new IllegalArgumentException("Short URL has expired");
+        }
+
+        // Increment click count directly in the database
+        urlMappingRepository.incrementClickCount(shortCode);
+
+        return mapping.getOriginalUrl();
     }
 
     @Transactional(readOnly = true)
@@ -71,6 +106,7 @@ public class UrlService {
         return new UrlResponse(
                 mapping.getShortCode(),
                 generatedShortUrl,
+                mapping.getClickCount(),
                 mapping.getExpiresAt()
         );
     }
