@@ -1,6 +1,7 @@
 package com.jana.url_shortener.service;
 
 import com.jana.url_shortener.dto.ShortenUrlRequest;
+import com.jana.url_shortener.dto.UrlAnalyticsResponse;
 import com.jana.url_shortener.dto.UrlResponse;
 import com.jana.url_shortener.entity.UrlMapping;
 import com.jana.url_shortener.exception.ResourceNotFoundException;
@@ -125,6 +126,26 @@ public class UrlService {
                 generatedShortUrl,
                 mapping.getClickCount(),
                 mapping.getExpiresAt()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public UrlAnalyticsResponse getUrlAnalytics(Long id) {
+        log.info("Fetching analytics for URL ID: {}", id);
+
+        UrlMapping mapping = urlMappingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Short URL not found for ID: " + id));
+
+        boolean isExpired = mapping.getExpiresAt() != null
+                && mapping.getExpiresAt().isBefore(LocalDateTime.now());
+
+        return new UrlAnalyticsResponse(
+                mapping.getShortCode(),
+                mapping.getOriginalUrl(),
+                mapping.getClickCount(),
+                mapping.getCreatedAt(),
+                mapping.getExpiresAt(),
+                isExpired
         );
     }
 }

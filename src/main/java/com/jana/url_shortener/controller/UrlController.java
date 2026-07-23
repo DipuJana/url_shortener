@@ -1,6 +1,7 @@
 package com.jana.url_shortener.controller;
 
 import com.jana.url_shortener.dto.ShortenUrlRequest;
+import com.jana.url_shortener.dto.UrlAnalyticsResponse;
 import com.jana.url_shortener.dto.UrlResponse;
 import com.jana.url_shortener.service.UrlService;
 import jakarta.validation.Valid;
@@ -29,5 +30,11 @@ public class UrlController {
     public ResponseEntity<UrlResponse> getUrlMetadata(@PathVariable Long id) {
         UrlResponse response = urlService.getUrlMetadata(id);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/analytics")
+    public ResponseEntity<UrlAnalyticsResponse> getUrlAnalytics(@PathVariable Long id) {
+        UrlAnalyticsResponse analytics = urlService.getUrlAnalytics(id);
+        return ResponseEntity.ok(analytics);
     }
 }
