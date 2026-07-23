@@ -23,6 +23,7 @@ public class UrlService {
 
     private final UrlMappingRepository urlMappingRepository;
     private final RedisCacheService redisCacheService;
+    private final AnalyticsService analyticsService;
 
     private static final Duration DEFAULT_CACHE_TTL = Duration.ofHours(24);
 
@@ -82,14 +83,15 @@ public class UrlService {
         );
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public String getOriginalUrlAndValidate(String shortCode) {
         log.info("Resolving redirect for short code: {}", shortCode);
 
         // 1. CHECK REDIS CACHE FIRST
         Optional<String> cachedUrl = redisCacheService.getOriginalUrl(shortCode);
         if (cachedUrl.isPresent()) {
-            urlMappingRepository.incrementClickCount(shortCode);
+            // Asynchronous non-blocking write
+            analyticsService.incrementClickCountAsync(shortCode);
             return cachedUrl.get();
         }
 
@@ -105,7 +107,7 @@ public class UrlService {
         // 3. STORE IN REDIS FOR FUTURE READS
         redisCacheService.cacheUrl(shortCode, mapping.getOriginalUrl(), DEFAULT_CACHE_TTL);
 
-        urlMappingRepository.incrementClickCount(shortCode);
+        analyticsService.incrementClickCountAsync(shortCode);
 
         return mapping.getOriginalUrl();
     }
