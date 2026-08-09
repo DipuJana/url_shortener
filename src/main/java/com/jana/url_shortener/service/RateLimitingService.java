@@ -18,15 +18,29 @@ public class RateLimitingService {
 
     public Bucket resolveBucket(String key) {
         return cache.computeIfAbsent(key, k -> {
-            log.debug("Initializing new rate limiting bucket for client key [{}]", k);
-            return createNewBucket();
+            if (k.startsWith("user:")) {
+                log.debug("Initializing AUTHENTICATED rate limit bucket for [{}]", k);
+                return createAuthenticatedBucket();
+            } else {
+                log.debug("Initializing ANONYMOUS IP rate limit bucket for [{}]", k);
+                return createAnonymousBucket();
+            }
         });
     }
 
-    private Bucket createNewBucket() {
-        // Refill 10 tokens every 1 minute
-        Refill refill = Refill.greedy(1, Duration.ofMinutes(1));
-        Bandwidth limit = Bandwidth.classic(1, refill);
+
+    private Bucket createAuthenticatedBucket() {
+        Refill refill = Refill.greedy(20, Duration.ofMinutes(1));
+        Bandwidth limit = Bandwidth.classic(20, refill);
+        return Bucket.builder()
+                .addLimit(limit)
+                .build();
+    }
+
+
+    private Bucket createAnonymousBucket() {
+        Refill refill = Refill.greedy(5, Duration.ofMinutes(1));
+        Bandwidth limit = Bandwidth.classic(5, refill);
         return Bucket.builder()
                 .addLimit(limit)
                 .build();
