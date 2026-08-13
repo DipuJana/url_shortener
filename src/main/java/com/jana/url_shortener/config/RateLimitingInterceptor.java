@@ -1,6 +1,7 @@
 package com.jana.url_shortener.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jana.url_shortener.dto.ErrorResponse;
 import com.jana.url_shortener.security.CustomUserDetails;
 import com.jana.url_shortener.service.RateLimitingService;
 import io.github.bucket4j.Bucket;
@@ -16,16 +17,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class RateLimitingInterceptor implements HandlerInterceptor {
 
     private final RateLimitingService rateLimitingService;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper; // Spring-managed ObjectMapper (supports LocalDateTime)
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -44,13 +42,14 @@ public class RateLimitingInterceptor implements HandlerInterceptor {
                 response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                 response.addHeader("X-Rate-Limit-Retry-After-Seconds", String.valueOf(waitForRefillSecs));
 
-                Map<String, Object> errorDetails = new HashMap<>();
-                errorDetails.put("status", HttpStatus.TOO_MANY_REQUESTS.value());
-                errorDetails.put("error", "Too Many Requests");
-                errorDetails.put("message", "Rate limit exceeded. Try again in " + waitForRefillSecs + " seconds.");
-                errorDetails.put("path", request.getRequestURI());
+                // Use the exact ErrorResponse record used across the entire application
+                ErrorResponse errorResponse = new ErrorResponse(
+                        "Too Many Requests",
+                        "Rate limit exceeded. Try again in " + waitForRefillSecs + " seconds.",
+                        request.getRequestURI()
+                );
 
-                objectMapper.writeValue(response.getOutputStream(), errorDetails);
+                objectMapper.writeValue(response.getOutputStream(), errorResponse);
                 return false;
             }
 

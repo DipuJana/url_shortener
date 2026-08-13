@@ -1,6 +1,7 @@
 package com.jana.url_shortener.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -16,5 +17,10 @@ public record ErrorResponse(
     // Compact constructor for standard errors (sets validationErrors to null)
     public ErrorResponse(String error, String message, String path) {
         this(LocalDateTime.now(), error, message, path, null);
+    }
+
+    // Constructor for validation errors
+    public ErrorResponse(String error, String message, String path, Map<String, String> validationErrors) {
+        this(LocalDateTime.now(), error, message, path, validationErrors);
     }
 }
