@@ -63,7 +63,10 @@ public class SecurityConfig {
                         // 2. PROTECTED ENDPOINTS
                         .requestMatchers("/api/v1/urls/**").authenticated()
 
-                        // 3. CATCH-ALL
+                        // 3. OpenAPI & Swagger UI
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+                        // 4. CATCH-ALL
                         .anyRequest().authenticated()
                 );
 
