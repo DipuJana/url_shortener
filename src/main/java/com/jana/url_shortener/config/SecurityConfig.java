@@ -58,6 +58,7 @@ public class SecurityConfig {
                         // 1. PUBLIC ENDPOINTS
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/{shortCode}").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/error").permitAll()
 
                         // 2. PROTECTED ENDPOINTS
