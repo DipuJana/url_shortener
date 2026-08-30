@@ -32,12 +32,22 @@ jobs:
       - name: Grant execute permission for Maven wrapper
         run: chmod +x mvnw
 
-      # 4. Compile, run Unit tests, and execute Integration tests against H2 test profile
+      # 4. Compile, run Unit tests, and execute Integration tests
       - name: Build with Maven and Run Tests
         run: ./mvnw clean verify -B
         env:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           JWT_EXPIRATION_MS: 86400000
+
+      # Print test failure reports to the console if step 4 fails
+      - name: Dump Test Reports on Failure
+        if: failure()
+        run: |
+          echo "=== SUREFIRE TEST REPORTS ==="
+          for file in target/surefire-reports/*.txt; do
+            echo "--- $file ---"
+            cat "$file"
+          done
 
       # 5. Verify Docker build succeeds
       - name: Verify Docker Build
