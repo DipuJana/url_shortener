@@ -1,11 +1,11 @@
 package com.jana.url_shortener.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jana.url_shortener.config.RateLimitingInterceptor;
 import com.jana.url_shortener.dto.AuthResponse;
 import com.jana.url_shortener.dto.LoginRequest;
 import com.jana.url_shortener.dto.RegisterRequest;
 import com.jana.url_shortener.dto.ShortenUrlRequest;
+import com.jana.url_shortener.repository.UrlMappingRepository;
 import com.jana.url_shortener.repository.UserRepository;
 import com.jana.url_shortener.service.RedisCacheService;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,16 +14,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -41,12 +38,16 @@ class RateLimitingIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private UrlMappingRepository urlMappingRepository;
+
     @MockitoBean
     private RedisCacheService redisCacheService;
 
-
     @BeforeEach
     void setUp() {
+        // Child table must always be cleared before the parent table to avoid FK violations
+        urlMappingRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -57,7 +58,6 @@ class RateLimitingIntegrationTest {
         String payload = objectMapper.writeValueAsString(request);
         String clientIp = "203.0.113.10";
 
-        // First 5 requests consume the capacity of 5 tokens
         for (int i = 1; i <= 5; i++) {
             mockMvc.perform(post("/api/v1/auth/register")
                             .header("X-Forwarded-For", clientIp)
@@ -66,7 +66,6 @@ class RateLimitingIntegrationTest {
                     .andExpect(status().is(i == 1 ? 201 : 400));
         }
 
-        // 6th Request must be blocked with HTTP 429
         mockMvc.perform(post("/api/v1/auth/register")
                         .header("X-Forwarded-For", clientIp)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -74,13 +73,12 @@ class RateLimitingIntegrationTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(header().exists("X-Rate-Limit-Retry-After-Seconds"))
                 .andExpect(jsonPath("$.error").value("Too Many Requests"))
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Rate limit exceeded")));
+                .andExpect(jsonPath("$.message").value(containsString("Rate limit exceeded")));
     }
 
     @Test
     @DisplayName("Authenticated Rate Limiting: 21st POST request from same User ID returns 429 Too Many Requests")
     void authenticatedUser_ExceedsRateLimit_Returns429() throws Exception {
-        // Register & authenticate user
         mockMvc.perform(post("/api/v1/auth/register")
                 .header("X-Forwarded-For", "203.0.113.20")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -99,7 +97,6 @@ class RateLimitingIntegrationTest {
         ShortenUrlRequest request = new ShortenUrlRequest("https://spring.io", null, null);
         String payload = objectMapper.writeValueAsString(request);
 
-        // Authenticated capacity is 20 tokens per minute
         for (int i = 1; i <= 20; i++) {
             mockMvc.perform(post("/api/v1/urls")
                             .header("Authorization", "Bearer " + jwtToken)
@@ -108,7 +105,6 @@ class RateLimitingIntegrationTest {
                     .andExpect(status().isCreated());
         }
 
-        // 21st Request must be blocked by user bucket rate limit
         mockMvc.perform(post("/api/v1/urls")
                         .header("Authorization", "Bearer " + jwtToken)
                         .contentType(MediaType.APPLICATION_JSON)

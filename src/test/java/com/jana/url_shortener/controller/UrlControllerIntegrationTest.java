@@ -54,6 +54,7 @@ class UrlControllerIntegrationTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        // Clear child mappings first to avoid FK constraint violations
         urlMappingRepository.deleteAll();
         userRepository.deleteAll();
 

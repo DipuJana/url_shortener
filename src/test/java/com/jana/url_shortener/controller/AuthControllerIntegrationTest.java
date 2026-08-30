@@ -3,6 +3,7 @@ package com.jana.url_shortener.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jana.url_shortener.dto.LoginRequest;
 import com.jana.url_shortener.dto.RegisterRequest;
+import com.jana.url_shortener.repository.UrlMappingRepository;
 import com.jana.url_shortener.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,10 +31,15 @@ class AuthControllerIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private UrlMappingRepository urlMappingRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void cleanUp() {
+        // Clear child mappings first to avoid FK constraint violations
+        urlMappingRepository.deleteAll();
         userRepository.deleteAll();
     }
 
