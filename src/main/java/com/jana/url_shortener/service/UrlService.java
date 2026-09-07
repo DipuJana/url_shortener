@@ -3,6 +3,7 @@ package com.jana.url_shortener.service;
 import com.jana.url_shortener.dto.ShortenUrlRequest;
 import com.jana.url_shortener.dto.UrlAnalyticsResponse;
 import com.jana.url_shortener.dto.UrlResponse;
+import com.jana.url_shortener.dto.UserUrlResponse;
 import com.jana.url_shortener.entity.UrlMapping;
 import com.jana.url_shortener.entity.User;
 import com.jana.url_shortener.exception.ResourceNotFoundException;
@@ -19,9 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -161,6 +162,36 @@ public class UrlService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public List<UserUrlResponse> getMyUrls() {
+
+        CustomUserDetails userDetails =
+                (CustomUserDetails) SecurityContextHolder.getContext()
+                        .getAuthentication()
+                        .getPrincipal();
+
+        User userReference = userRepository.getReferenceById(userDetails.getId());
+
+        return urlMappingRepository
+                .findByUserOrderByCreatedAtDesc(userReference)
+                .stream()
+                .map(this::mapToUserUrlResponse)
+                .toList();
+    }
+
+    private UserUrlResponse mapToUserUrlResponse(UrlMapping mapping) {
+        String shortUrl = "http://localhost:8080/" + mapping.getShortCode();
+
+        return new UserUrlResponse(
+                mapping.getId(),
+                mapping.getOriginalUrl(),
+                mapping.getShortCode(),
+                shortUrl,
+                mapping.getClickCount(),
+                mapping.getCreatedAt(),
+                mapping.getExpiresAt()
+        );
+    }
 
     private UrlMapping findUrlAndVerifyOwnership(Long id) {
         CustomUserDetails userDetails = (CustomUserDetails) SecurityContextHolder.getContext()

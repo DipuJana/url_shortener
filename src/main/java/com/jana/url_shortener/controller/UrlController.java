@@ -3,6 +3,7 @@ package com.jana.url_shortener.controller;
 import com.jana.url_shortener.dto.ShortenUrlRequest;
 import com.jana.url_shortener.dto.UrlAnalyticsResponse;
 import com.jana.url_shortener.dto.UrlResponse;
+import com.jana.url_shortener.dto.UserUrlResponse;
 import com.jana.url_shortener.service.UrlService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/urls")
@@ -36,5 +38,10 @@ public class UrlController {
     public ResponseEntity<UrlAnalyticsResponse> getUrlAnalytics(@PathVariable Long id) {
         UrlAnalyticsResponse analytics = urlService.getUrlAnalytics(id);
         return ResponseEntity.ok(analytics);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<UserUrlResponse>> getMyUrls() {
+        return ResponseEntity.ok(urlService.getMyUrls());
     }
 }
