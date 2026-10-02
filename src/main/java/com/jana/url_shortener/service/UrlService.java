@@ -42,7 +42,7 @@ public class UrlService {
 
     // Block system routes from ever being claimed as custom aliases
     private static final Set<String> RESERVED_KEYWORDS = Set.of(
-            "api", "admin", "login", "health", "metrics", "swagger-ui", "actuator", "v1"
+            "api", "admin", "login", "register", "dashboard", "health", "metrics", "swagger-ui", "actuator", "v1"
     );
 
     @Transactional

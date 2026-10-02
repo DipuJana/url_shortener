@@ -56,10 +56,19 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // 1. PUBLIC ENDPOINTS
-                        .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/{shortCode}").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/error").permitAll()
+                                .requestMatchers("/api/v1/auth/**").permitAll()
+
+                                // React frontend routes
+                                .requestMatchers(
+                                        "/",
+                                        "/login",
+                                        "/register",
+                                        "/dashboard"
+                                ).permitAll()
+
+                                .requestMatchers(HttpMethod.GET, "/{shortCode}").permitAll()
+                                .requestMatchers("/actuator/**").permitAll()
+                                .requestMatchers("/error").permitAll()
 
                         // 2. PROTECTED ENDPOINTS
                         .requestMatchers("/api/v1/urls/**").authenticated()

@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -54,6 +55,7 @@ class UrlServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(urlService, "baseUrl", "http://localhost:8080");
 
         testUser = User.builder()
                 .id(1L)
@@ -195,9 +197,6 @@ class UrlServiceTest {
                         null
                 );
 
-        when(userRepository.getReferenceById(1L))
-                .thenReturn(testUser);
-
         IllegalArgumentException exception =
                 assertThrows(
                         IllegalArgumentException.class,
@@ -213,11 +212,7 @@ class UrlServiceTest {
                 .save(any());
 
         verify(redisCacheService, never())
-                .cacheUrl(
-                        any(),
-                        any(),
-                        any()
-                );
+                .cacheUrl(any(), any(), any());
     }
 
     @Test
