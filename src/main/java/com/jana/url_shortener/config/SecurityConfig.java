@@ -63,7 +63,8 @@ public class SecurityConfig {
                                         "/",
                                         "/login",
                                         "/register",
-                                        "/dashboard"
+                                        "/dashboard",
+                                        "/dashboard/urls/*/analytics"
                                 ).permitAll()
 
                                 .requestMatchers(HttpMethod.GET, "/{shortCode}").permitAll()

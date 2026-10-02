@@ -10,7 +10,8 @@ public class SpaController {
             "/",
             "/login",
             "/register",
-            "/dashboard"
+            "/dashboard",
+            "/dashboard/urls/{id}/analytics"
     })
     public String forwardToReact() {
         return "forward:/index.html";
