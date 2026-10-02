@@ -12,6 +12,7 @@ import com.jana.url_shortener.repository.UserRepository;
 import com.jana.url_shortener.security.CustomUserDetails;
 import com.jana.url_shortener.util.Base62Util;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +29,9 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Slf4j
 public class UrlService {
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     private final UrlMappingRepository urlMappingRepository;
     private final UserRepository userRepository;
@@ -89,7 +93,7 @@ public class UrlService {
         log.info("Successfully persisted short code [{}] for User ID [{}]",
                 savedMapping.getShortCode(), userDetails.getId());
 
-        String generatedShortUrl = "http://localhost:8080/" + savedMapping.getShortCode();
+        String generatedShortUrl = baseUrl + "/" + savedMapping.getShortCode();
 
         return new UrlResponse(
                 savedMapping.getShortCode(),
@@ -133,7 +137,7 @@ public class UrlService {
 
         UrlMapping mapping = findUrlAndVerifyOwnership(id);
 
-        String generatedShortUrl = "http://localhost:8080/" + mapping.getShortCode();
+        String generatedShortUrl = baseUrl + "/" + mapping.getShortCode();
 
         return new UrlResponse(
                 mapping.getShortCode(),
@@ -180,7 +184,7 @@ public class UrlService {
     }
 
     private UserUrlResponse mapToUserUrlResponse(UrlMapping mapping) {
-        String shortUrl = "http://localhost:8080/" + mapping.getShortCode();
+        String shortUrl = baseUrl + "/" + mapping.getShortCode();
 
         return new UserUrlResponse(
                 mapping.getId(),
