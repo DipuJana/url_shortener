@@ -16,3 +16,10 @@ export type Analytics = {
     expiresAt: string | null;
     isExpired: boolean;
 };
+
+export type CreateUrlResult = {
+    shortCode: string;
+    shortUrl: string;
+    clickCount: number;
+    expiresAt: string | null;
+};

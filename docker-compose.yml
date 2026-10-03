@@ -5,7 +5,6 @@ services:
   mysql:
     image: mysql:8.4
     container_name: urlshortener-mysql
-    restart: always
     environment:
       MYSQL_DATABASE: url_shortener_db
       MYSQL_ROOT_PASSWORD: rootpassword
@@ -25,7 +24,6 @@ services:
   redis:
     image: redis:alpine
     container_name: urlshortener-redis
-    restart: always
     ports:
       - "6381:6379"
     volumes:
@@ -44,17 +42,21 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: urlshortener-app
-    restart: always
     ports:
       - "8081:8080"
     environment:
+      APP_BASE_URL: http://localhost:8081
+
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/url_shortener_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: rootpassword
+
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: 86400000
+
     depends_on:
       mysql:
         condition: service_healthy
