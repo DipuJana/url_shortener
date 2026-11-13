@@ -1,3 +1,4 @@
+
 package com.jana.url_shortener.controller;
 
 import com.jana.url_shortener.service.UrlService;
@@ -17,7 +18,7 @@ public class RedirectController {
 
     private final UrlService urlService;
 
-    @GetMapping("/{shortCode}")
+    @GetMapping("/{shortCode:[a-zA-Z0-9_-]+}")
     public ResponseEntity<Void> redirectToOriginalUrl(@PathVariable String shortCode) {
         String originalUrl = urlService.getOriginalUrlAndValidate(shortCode);
 

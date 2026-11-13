@@ -48,15 +48,14 @@ services:
       APP_BASE_URL: http://localhost:8081
 
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/url_shortener_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: rootpassword
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
 
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
 
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: 86400000
-
     depends_on:
       mysql:
         condition: service_healthy

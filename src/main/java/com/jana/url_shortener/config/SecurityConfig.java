@@ -55,29 +55,48 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. PUBLIC ENDPOINTS
-                                .requestMatchers("/api/v1/auth/**").permitAll()
 
-                                // React frontend routes
-                                .requestMatchers(
-                                        "/",
-                                        "/login",
-                                        "/register",
-                                        "/dashboard",
-                                        "/dashboard/urls/*/analytics"
-                                ).permitAll()
+                        // Public authentication endpoints
+                        .requestMatchers("/api/v1/auth/**").permitAll()
 
-                                .requestMatchers(HttpMethod.GET, "/{shortCode}").permitAll()
-                                .requestMatchers("/actuator/**").permitAll()
-                                .requestMatchers("/error").permitAll()
+                        // React frontend routes
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/login",
+                                "/register",
+                                "/dashboard",
+                                "/dashboard/urls/*/analytics"
+                        ).permitAll()
 
-                        // 2. PROTECTED ENDPOINTS
+                        // React static assets
+                        .requestMatchers(
+                                "/assets/**",
+                                "/favicon.ico",
+                                "/favicon.svg",
+                                "/vite.svg"
+                        ).permitAll()
+
+                        // Public short URL redirects
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/{shortCode:[a-zA-Z0-9_-]+}"
+                        ).permitAll()
+
+                        // Actuator and error handling
+                        .requestMatchers("/actuator/**", "/error").permitAll()
+
+                        // Protected URL management APIs
                         .requestMatchers("/api/v1/urls/**").authenticated()
 
-                        // 3. OpenAPI & Swagger UI
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Swagger
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
 
-                        // 4. CATCH-ALL
+                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 );
 
